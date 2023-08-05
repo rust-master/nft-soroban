@@ -1,5 +1,3 @@
-use std::ptr::null;
-
 use soroban_sdk::{
     contract, contractimpl, contracttype, symbol_short, Address, Env, String, Symbol,
 };
@@ -30,7 +28,7 @@ pub struct NFTDetail {
 pub trait NFTTrait {
     fn initialize(env: Env, admin: Address, name: String, symbol: String);
 
-    fn mint(env: Env, to: Address, token_uri: String);
+    fn mint(env: Env, to: Address, token_uri: String) -> u128;
 
     fn burn(env: Env, to: Address, token_id: u128);
 
@@ -65,7 +63,7 @@ impl NFTTrait for NFTContract {
         env.storage().persistent().set(&METADATA_KEY, &metadata);
     }
 
-    fn mint(env: Env, to: Address, token_uri: String) {
+    fn mint(env: Env, to: Address, token_uri: String) -> u128 {
         to.require_auth();
 
         if to == env.current_contract_address() {
@@ -74,7 +72,7 @@ impl NFTTrait for NFTContract {
             panic!("Token URI can not be empty")
         }
 
-        let mut token_id: u128 = env.storage().instance().get(&COUNTER).unwrap_or(1);
+        let mut token_id: u128 = env.storage().instance().get(&COUNTER).unwrap_or(0);
 
         token_id += 1;
 
@@ -85,6 +83,8 @@ impl NFTTrait for NFTContract {
 
         env.storage().instance().set(&token_id, &nft_detail);
         env.storage().instance().set(&COUNTER, &token_id);
+
+        return token_id;
     }
 
     fn burn(env: Env, to: Address, token_id: u128) {
@@ -119,7 +119,7 @@ impl NFTTrait for NFTContract {
 
         let mut nft_detail = Self::get_nft_detail(env.clone(), token_id.clone());
 
-        if nft_detail.owner != to || nft_detail.owner == env.current_contract_address() {
+        if nft_detail.owner != from || nft_detail.owner == env.current_contract_address() {
             panic!("NFT not exist")
         }
 
@@ -172,3 +172,8 @@ impl NFTTrait for NFTContract {
         metadata.symbol
     }
 }
+
+#[cfg(test)]
+mod test;
+
+mod testutils;
